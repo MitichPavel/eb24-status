@@ -1,6 +1,6 @@
 # [📈 Live Status](https://MitichPavel.github.io/eb24-status): <!--live status--> **🟩 All systems operational**
 
-This repository contains the open-source uptime monitor and status page for [Pavlo](https://MitichPavel.github.io/eb24-status), powered by [Upptime](https://github.com/upptime/upptime).
+This repository contains the open-source uptime monitor and status page for [Eloboost24 status](https://MitichPavel.github.io/eb24-status), powered by [Upptime](https://github.com/upptime/upptime).
 
 [![Uptime CI](https://github.com/MitichPavel/eb24-status/workflows/Uptime%20CI/badge.svg)](https://github.com/MitichPavel/eb24-status/actions/workflows/uptime.yml)
 [![Response Time CI](https://github.com/MitichPavel/eb24-status/workflows/Response%20Time%20CI/badge.svg)](https://github.com/MitichPavel/eb24-status/actions/workflows/response-time.yml)
