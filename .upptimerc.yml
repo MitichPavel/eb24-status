@@ -4,7 +4,7 @@ repo: eb24-status # The name of this repository
 
 sites:
   - name: EB24 Homepage
-    url: https://eloboost24.eu.com
+    url: https://eloboost24.eu
   - name: EB24 Marketplace LOL Accounts
     url: https://eloboost24.eu/marketplace/accounts/league-of-legends
   - name: EB24 Marketplace LOL Items
