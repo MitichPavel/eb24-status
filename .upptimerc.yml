@@ -23,8 +23,8 @@ sites:
 status-website:
   # Add your custom domain name, or remove the `cname` line if you don't have a domain
   # Uncomment the `baseUrl` line if you don't have a custom domain and add your repo name there
-  cname: https://mitichpavel.github.io
-  baseUrl: /eb24-status
+  # cname: https://mitichpavel.github.io
+  baseUrl: /eb24-status/
   logoUrl: http://eloboost24.eu/favicon/apple-icon-180x180.png
   name: Eloboost24.eu status
   introTitle: "**Eloboost24** status page created with upptime. Upptime is the open-source uptime monitor and status page, powered entirely by GitHub."
