@@ -42,7 +42,7 @@ jobs:
       - name: Setup Node.js env
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
 
       - name: Install Playwright, Stealth
@@ -62,7 +62,7 @@ jobs:
           retention-days: 7
 
       - name: Send Slack Notification on Failure
-        uses: slackapi/slack-github-action@v2.0.0
+        uses: slackapi/slack-github-action@v2
         if: failure()
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
