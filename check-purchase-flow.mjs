@@ -51,7 +51,7 @@ async function handleItemsAndAccounts(page, targetContext) {
   await page.waitForSelector(".items-container", { timeout: 10000 });
 
   // Checking if cards are rendered
-  const cards = page.locator(".items-container .card");
+  const cards = page.locator(".items-container .card-test-error");
   const cardsCount = await cards.count();
   console.log(`Found rendered ${keyWord}(s): ${cardsCount}`);
 
