@@ -37,7 +37,7 @@ jobs:
 
     steps:
       - name: Checkout repository code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Setup Node.js env
         uses: actions/setup-node@v4
@@ -61,16 +61,16 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-      - name: Send Slack Notification on Failure
-        uses: slackapi/slack-github-action@v2
-        if: failure()
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "🚨 *E2E Purchase Flow Failure!* 🚨\nHi, an error was detected in the purchase process for product: *${{ matrix.flow_name }}*.\n\n*Repository:* ${{ github.repository }}\n*Logs & Artifacts (Screenshots):* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            }
+      # - name: Send Slack Notification on Failure
+      #   uses: slackapi/slack-github-action@v2
+      #   if: failure()
+      #   with:
+      #     webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+      #     webhook-type: incoming-webhook
+      #     payload: |
+      #       {
+      #         "text": "🚨 *E2E Purchase Flow Failure!* 🚨\nHi, an error was detected in the purchase process for product: *${{ matrix.flow_name }}*.\n\n*Repository:* ${{ github.repository }}\n*Logs & Artifacts (Screenshots):* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      #       }
 
       - name: Trigger Upptime Status Update on Failure
         if: failure()
