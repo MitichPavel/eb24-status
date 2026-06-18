@@ -50,7 +50,7 @@ jobs:
           npx playwright install chromium --with-deps
 
       - name: Execute Playwright E2E Test
-        run: node check-purchase-flow.js ${{ matrix.flow_name }} test-ci@example.com
+        run: node check-purchase-flow.mjs ${{ matrix.flow_name }} test-ci@example.com
 
       - name: Upload Failure Screenshots to Artifacts
         uses: actions/upload-artifact@v4
