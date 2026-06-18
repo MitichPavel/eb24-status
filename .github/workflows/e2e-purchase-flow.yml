@@ -43,7 +43,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "24"
-          cache: "npm"
 
       - name: Install Playwright, Stealth
         run: |
@@ -60,6 +59,7 @@ jobs:
           name: purchase-failure-${{ matrix.flow_name }}
           path: failure-screenshot.png
           retention-days: 7
+          if-no-files-found: ignore
 
       - name: Send Slack Notification on Failure
         uses: slackapi/slack-github-action@v2
