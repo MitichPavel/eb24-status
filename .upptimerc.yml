@@ -19,6 +19,24 @@ sites:
     url: https://eloboost24.eu/pro-games/league-of-legends
   - name: Blog
     url: https://eloboost24.eu/blog
+  - name: "Purchase: Boosting Flow"
+    url: https://eloboost24.eu/boosting/swift-pass
+    maxResponseTime: 60000
+  - name: "Purchase: Coaching Flow"
+    url: https://eloboost24.eu/coaching/league-of-legends
+    maxResponseTime: 60000
+  - name: "Purchase: Accounts Flow"
+    url: https://eloboost24.eu/marketplace/accounts/league-of-legends
+    maxResponseTime: 60000
+  - name: "Purchase: Items Flow"
+    url: https://eloboost24.eu/marketplace/items/league-of-legends
+    maxResponseTime: 60000
+  - name: "Purchase: GGirls Flow"
+    url: https://eloboost24.eu/ggirls/league-of-legends
+    maxResponseTime: 60000
+  - name: "Purchase: Pro Games Flow"
+    url: https://eloboost24.eu/pro-games/arc-raiders
+    maxResponseTime: 60000
 
 status-website:
   # Add your custom domain name, or remove the `cname` line if you don't have a domain

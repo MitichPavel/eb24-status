@@ -18,6 +18,23 @@ jobs:
       contents: write
       actions: write
 
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - flow_name: "boosting"
+            slug: "purchase-boosting-flow"
+          - flow_name: "coaching"
+            slug: "purchase-coaching-flow"
+          - flow_name: "accounts"
+            slug: "purchase-accounts-flow"
+          - flow_name: "items"
+            slug: "purchase-items-flow"
+          - flow_name: "ggirls"
+            slug: "purchase-ggirls-flow"
+          - flow_name: "progames"
+            slug: "purchase-pro-games-flow"
+
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v6
@@ -33,29 +50,14 @@ jobs:
           npm install playwright-extra puppeteer-extra-plugin-stealth
           npx playwright install chromium --with-deps
 
-      - name: Test Boosting Purchase Flow
-        run: node check-purchase-flow.js boosting test-ci@example.com
-
-      - name: Test Coaching Purchase Flow
-        run: node check-purchase-flow.js coaching test-ci@example.com
-
-      - name: Test Accounts (Marketplace) Purchase Flow
-        run: node check-purchase-flow.js accounts test-ci@example.com
-
-      - name: Test Items (Marketplace) Purchase Flow
-        run: node check-purchase-flow.js items test-ci@example.com
-
-      - name: Test GGirls Purchase Flow
-        run: node check-purchase-flow.js ggirls test-ci@example.com
-
-      - name: Test Pro Games Purchase Flow
-        run: node check-purchase-flow.js pro-games test-ci@example.com
+      - name: Execute Playwright E2E Test
+        run: node check-purchase-flow.js ${{ matrix.flow_name }} test-ci@example.com
 
       - name: Upload Failure Screenshots to Artifacts
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: e2e-failure-screenshots
+          name: purchase-failure-${{ matrix.flow_name }}
           path: failure-screenshot.png
           retention-days: 7
 
@@ -67,7 +69,7 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "🚨 *E2E Purchase Flow Failure!* 🚨\nHi, an error was detected in the purchase process for product: *${{ env.FAILED_FLOW || 'UNKNOWN FLOW' }}*.\n\n*Repository:* ${{ github.repository }}\n*Logs & Artifacts (Screenshots):* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              "text": "🚨 *E2E Purchase Flow Failure!* 🚨\nHi, an error was detected in the purchase process for product: *${{ matrix.flow_name }}*.\n\n*Repository:* ${{ github.repository }}\n*Logs & Artifacts (Screenshots):* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }
 
       - name: Trigger Upptime Status Update on Failure
@@ -75,4 +77,5 @@ jobs:
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.GH_PAT || github.token }}
-          event-type: uptime
+          event-type: uptime_failure
+          client-payload: '{"slug": "${{ matrix.slug }}"}'
