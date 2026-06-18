@@ -1,0 +1,78 @@
+name: E2E Purchase Flow CI
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-purchase-flow
+  cancel-in-progress: true
+
+jobs:
+  e2e-tests:
+    name: Run E2E Purchase Scenarios
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      actions: write
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js env
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install Playwright, Stealth
+        run: |
+          npm install playwright-extra puppeteer-extra-plugin-stealth
+          npx playwright install chromium --with-deps
+
+      - name: Test Boosting Purchase Flow
+        run: node check-purchase-flow.js boosting test-ci@example.com
+
+      - name: Test Coaching Purchase Flow
+        run: node check-purchase-flow.js coaching test-ci@example.com
+
+      - name: Test Accounts (Marketplace) Purchase Flow
+        run: node check-purchase-flow.js accounts test-ci@example.com
+
+      - name: Test Items (Marketplace) Purchase Flow
+        run: node check-purchase-flow.js items test-ci@example.com
+
+      - name: Test GGirls Purchase Flow
+        run: node check-purchase-flow.js ggirls test-ci@example.com
+
+      - name: Test Pro Games Purchase Flow
+        run: node check-purchase-flow.js pro-games test-ci@example.com
+
+      - name: Upload Failure Screenshots to Artifacts
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-failure-screenshots
+          path: failure-screenshot.png
+          retention-days: 7
+
+      - name: Send Slack Notification on Failure
+        uses: slackapi/slack-github-action@v2.0.0
+        if: failure()
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "🚨 *E2E Purchase Flow Failure!* 🚨\nHi, an error was detected in the purchase process for product: *${{ env.FAILED_FLOW || 'UNKNOWN FLOW' }}*.\n\n*Repository:* ${{ github.repository }}\n*Logs & Artifacts (Screenshots):* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
+
+      - name: Trigger Upptime Status Update on Failure
+        if: failure()
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GH_PAT || github.token }}
+          event-type: uptime
