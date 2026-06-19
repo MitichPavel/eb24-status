@@ -1,7 +1,7 @@
-url: https://raw.githubusercontent.com/MitichPavel/eb24-status/master/status-data/coaching-health.txt
-status: down
-code: 404
-responseTime: 13
-lastUpdated: 2026-06-19T11:32:49.226Z
+url: https://raw.githubusercontent.com/MitichPavel/eb24-status/master/status-data/coaching.html
+status: up
+code: 200
+responseTime: 109
+lastUpdated: 2026-06-19T18:34:58.791Z
 startTime: 2026-06-18T21:09:32.797Z
 generator: Upptime <https://github.com/upptime/upptime>
