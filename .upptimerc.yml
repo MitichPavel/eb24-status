@@ -73,18 +73,16 @@ sites:
       🔍 **E2E Test Failure Artifacts:**
       * [View HTML Report & Screenshot](https://raw.githubusercontent.com/MitichPavel/eb24-status/master/status-data/progames.html)
 
+# notifications:
+#   - type: slack
+#     webhook-url: "$SLACK_CRITICAL_WEBHOOK"
 
-
-notifications:
-  - type: slack
-    webhook-url: "$SLACK_CRITICAL_WEBHOOK"
-
-message-template: |
-  🚨 *Alert:* $SITE_NAME is $STATUS
+# message-template: |
+#   🚨 *Alert:* $SITE_NAME is $STATUS
   
-  *Health Check URL:* $SITE_URL
-  *HTML Report & Screenshot:* $SITE_URL/../$SITE_NAME.html
-  *Time:* $TIMESTAMP
+#   *Health Check URL:* $SITE_URL
+#   *HTML Report & Screenshot:* $SITE_URL/../$SITE_NAME.html
+#   *Time:* $TIMESTAMP
 
 status-website:
   # Add your custom domain name, or remove the `cname` line if you don't have a domain
