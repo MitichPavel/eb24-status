@@ -49,44 +49,73 @@ const finalUrl = urlMap[targetContext];
 
 const DIR = "./status-data";
 
-// --- UPPTIME STATUS ARTIFACTS MANAGEMENT ---
+// --- UPPTIME HTML REPORT MANAGEMENT ---
 function setStatusUp(contextName) {
   if (!fs.existsSync(DIR)) fs.mkdirSync(DIR, { recursive: true });
 
-  // 1. Create the health file so Upptime receives a 200 OK HTTP status code
-  fs.writeFileSync(path.join(DIR, `${contextName}-health.txt`), "OK");
-  console.log(`${GREEN}🟢 Status UP saved for Upptime: ${contextName}${RESET}`);
+  // Create a clean HTML file indicating success (GitHub will return HTTP 200 OK)
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Status UP - Purhcase ${contextName}</title>
+</head>
+<body style="font-family: Arial, sans-serif; padding: 20px; background: #e6f4ea; color: #137333;">
+  <h1>🟢 Purchase Flow Success</h1>
+  <p>Context: <strong>${contextName}</strong></p>
+  <p>Status: <strong>purchase flow is up</strong></p>
+  <p>Last checked: ${new Date().toISOString()}</p>
+</body>
+</html>
+  `;
 
-  // 2. Clean up old error logs and screenshots if they exist
-  const errorLogPath = path.join(DIR, `${contextName}-error.json`);
-  if (fs.existsSync(errorLogPath)) fs.unlinkSync(errorLogPath);
+  fs.writeFileSync(path.join(DIR, `${contextName}.html`), htmlContent.trim());
+  console.log(
+    `${GREEN}🟢 Status HTML (UP) saved for Upptime: ${contextName}${RESET}`,
+  );
 
+  // Clean up old failure screenshot to prevent repository bloat
   const oldScreenshotPath = path.join(DIR, `${contextName}-screenshot.png`);
   if (fs.existsSync(oldScreenshotPath)) fs.unlinkSync(oldScreenshotPath);
 }
 
-function setStatusDown(contextName, errorMessage) {
+function setStatusDown(contextName, errorMessage, hasScreenshot = true) {
   if (!fs.existsSync(DIR)) fs.mkdirSync(DIR, { recursive: true });
 
-  // 1. Remove the health file so Upptime receives a 404 Not Found error and triggers an alert
-  const healthPath = path.join(DIR, `${contextName}-health.txt`);
-  if (fs.existsSync(healthPath)) fs.unlinkSync(healthPath);
+  // Generate conditional screenshot HTML tag
+  const screenshotTag = hasScreenshot
+    ? `<h3>Failure Screenshot:</h3>
+       <img src="./${contextName}-screenshot.png" alt="Failure Screenshot" style="max-width: 100%; border: 2px solid #c5221f; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />`
+    : "";
 
-  // 2. Generate the JSON error artifact with incident details
-  const errorData = {
-    flow: contextName,
-    status: "FAILURE",
-    error: errorMessage,
-    timestamp: new Date().toISOString(),
-    screenshotUrl: `./${contextName}-screenshot.png`,
-  };
-  fs.writeFileSync(
-    path.join(DIR, `${contextName}-error.json`),
-    JSON.stringify(errorData, null, 2),
+  // Create an HTML report containing the required trigger string and the optional image tag
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Status DOWN - Purchase ${contextName}</title>
+</head>
+<body style="font-family: Arial, sans-serif; padding: 20px; background: #fce8e6; color: #c5221f;">
+  <h1>🔴 Purchase Flow Failure Detected</h1>
+  <p>Context: <strong>${contextName}</strong></p>
+  <p>Status: <strong style="background: #c5221f; color: white; padding: 4px 8px; border-radius: 4px;">purchase flow is down</strong></p>
+  <p>Timestamp: ${new Date().toISOString()}</p>
+  <hr style="border: 1px solid #fad2cf;" />
+  <h3>Error Message:</h3>
+  <pre style="background: #fff; padding: 15px; border: 1px solid #fad2cf; overflow-x: auto; font-family: monospace;">${errorMessage}</pre>
+  ${screenshotTag}
+</body>
+</html>
+  `;
+
+  fs.writeFileSync(path.join(DIR, `${contextName}.html`), htmlContent.trim());
+  console.log(
+    `${RED}🔴 Status HTML (DOWN) saved for Upptime: ${contextName}${RESET}`,
   );
-  console.log(`${RED}🔴 Status DOWN saved for Upptime: ${contextName}${RESET}`);
 }
-// --------------------------------------------
+// --------------------------------------
 
 async function handleItemsAndAccounts(page, targetContext) {
   const keyWord = targetContext === "accounts" ? "account" : "item";
@@ -300,7 +329,7 @@ async function handleBoosting(page) {
       );
     }
 
-    // SUCCESS DEPLOYMENT FOR UPPTIME (Generates health-txt)
+    // Generate Success HTML Report for Upptime (Triggers normal UP state)
     setStatusUp(targetContext);
 
     await browser.close();
@@ -311,25 +340,37 @@ async function handleBoosting(page) {
       error.message,
     );
 
-    // FAILURE DEPLOYMENT FOR UPPTIME (Removes health.txt, generates error.json)
-    setStatusDown(targetContext, error.message);
+    let screenshotCaptured = false;
 
-    // Capture and save failure screenshot directly inside status-data directory
+    // Try to capture the screenshot and save it inside status-data directory
     try {
       if (!fs.existsSync(DIR)) fs.mkdirSync(DIR, { recursive: true });
+
       await page.screenshot({
         path: path.join(DIR, `${targetContext}-screenshot.png`),
         fullPage: true,
       });
+
       console.log(
         `Saved failure screenshot to: ${DIR}/${targetContext}-screenshot.png`,
       );
+      screenshotCaptured = true;
     } catch (e) {
       console.error(
         `❌${RED}${BOLD} Failed to capture screenshot:${RESET}`,
         e.message,
       );
+
+      // Ensure no leftover screenshot from previous runs remains if current capture fails
+      const oldScreenshotPath = path.join(
+        DIR,
+        `${targetContext}-screenshot.png`,
+      );
+      if (fs.existsSync(oldScreenshotPath)) fs.unlinkSync(oldScreenshotPath);
     }
+
+    // Generate Failure HTML Report for Upptime with conditional image tag rendering
+    setStatusDown(targetContext, error.message, screenshotCaptured);
 
     if (process.env.GITHUB_ENV) {
       import("fs").then((fs) => {
