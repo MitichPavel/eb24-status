@@ -121,7 +121,7 @@ async function handleItemsAndAccounts(page, targetContext) {
   const keyWord = targetContext === "accounts" ? "account" : "item";
   await page.waitForSelector(".items-container", { timeout: 10000 });
 
-  const cards = page.locator(".items-container .card-test-error");
+  const cards = page.locator(".items-container .card");
   const cardsCount = await cards.count();
   console.log(`Found rendered ${keyWord}(s): ${cardsCount}`);
 
