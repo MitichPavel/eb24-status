@@ -33,7 +33,7 @@ jobs:
 
       - name: Install Playwright & Dependencies
         run: |
-ealth
+          npm install playwright playwright-extra puppeteer-extra-plugin-stealth
           npx playwright install chromium --with-deps
 
       - name: Execute Playwright E2E Test
