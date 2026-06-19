@@ -1,7 +1,7 @@
-url: https://eloboost24.eu/ggirls/league-of-legends
-status: up
-code: 200
-responseTime: 745
-lastUpdated: 2026-06-19T00:23:51.046Z
+url: https://raw.githubusercontent.com/MitichPavel/eb24-status/master/status-data/ggirls-health.txt
+status: down
+code: 404
+responseTime: 12
+lastUpdated: 2026-06-19T11:33:30.734Z
 startTime: 2026-06-18T21:09:35.243Z
 generator: Upptime <https://github.com/upptime/upptime>
