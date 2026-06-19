@@ -1,0 +1,7 @@
+{
+  "flow": "accounts",
+  "status": "FAILURE",
+  "error": "The account list (cards) is empty after API load.",
+  "timestamp": "2026-06-19T11:51:15.592Z",
+  "screenshotUrl": "./accounts-screenshot.png"
+}
