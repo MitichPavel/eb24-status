@@ -1,5 +1,7 @@
 import { chromium } from "playwright-extra";
 import stealthPlugin from "puppeteer-extra-plugin-stealth";
+import fs from "fs";
+import path from "path";
 
 const stealth = stealthPlugin();
 chromium.use(stealth);
@@ -45,12 +47,51 @@ const urlMap = {
 };
 const finalUrl = urlMap[targetContext];
 
+const DIR = "./status-data";
+
+// --- UPPTIME STATUS ARTIFACTS MANAGEMENT ---
+function setStatusUp(contextName) {
+  if (!fs.existsSync(DIR)) fs.mkdirSync(DIR, { recursive: true });
+
+  // 1. Create the health file so Upptime receives a 200 OK HTTP status code
+  fs.writeFileSync(path.join(DIR, `${contextName}-health.txt`), "OK");
+  console.log(`${GREEN}🟢 Status UP saved for Upptime: ${contextName}${RESET}`);
+
+  // 2. Clean up old error logs and screenshots if they exist
+  const errorLogPath = path.join(DIR, `${contextName}-error.json`);
+  if (fs.existsSync(errorLogPath)) fs.unlinkSync(errorLogPath);
+
+  const oldScreenshotPath = path.join(DIR, `${contextName}-screenshot.png`);
+  if (fs.existsSync(oldScreenshotPath)) fs.unlinkSync(oldScreenshotPath);
+}
+
+function setStatusDown(contextName, errorMessage) {
+  if (!fs.existsSync(DIR)) fs.mkdirSync(DIR, { recursive: true });
+
+  // 1. Remove the health file so Upptime receives a 404 Not Found error and triggers an alert
+  const healthPath = path.join(DIR, `${contextName}-health.txt`);
+  if (fs.existsSync(healthPath)) fs.unlinkSync(healthPath);
+
+  // 2. Generate the JSON error artifact with incident details
+  const errorData = {
+    flow: contextName,
+    status: "FAILURE",
+    error: errorMessage,
+    timestamp: new Date().toISOString(),
+    screenshotUrl: `./${contextName}-screenshot.png`,
+  };
+  fs.writeFileSync(
+    path.join(DIR, `${contextName}-error.json`),
+    JSON.stringify(errorData, null, 2),
+  );
+  console.log(`${RED}🔴 Status DOWN saved for Upptime: ${contextName}${RESET}`);
+}
+// --------------------------------------------
+
 async function handleItemsAndAccounts(page, targetContext) {
-  // Waiting for items container
   const keyWord = targetContext === "accounts" ? "account" : "item";
   await page.waitForSelector(".items-container", { timeout: 10000 });
 
-  // Checking if cards are rendered
   const cards = page.locator(".items-container .card-test-error");
   const cardsCount = await cards.count();
   console.log(`Found rendered ${keyWord}(s): ${cardsCount}`);
@@ -60,7 +101,6 @@ async function handleItemsAndAccounts(page, targetContext) {
   }
 
   console.log('2. Clicking the first "Buy now" button...');
-  // Locating the first available "Buy now" button inside card details
   const buyNowButton = page
     .locator(".card-details .svt-btn", { hasText: "Buy now" })
     .first();
@@ -69,10 +109,8 @@ async function handleItemsAndAccounts(page, targetContext) {
 }
 
 async function handleProGames(page) {
-  // Waiting for items container
   await page.waitForSelector(".items-container", { timeout: 10000 });
 
-  // Checking if pro games cards are rendered
   const cards = page.locator(".items-container .pro-games-card");
   const cardsCount = await cards.count();
   console.log(`Found rendered pro games profiles: ${cardsCount}`);
@@ -82,7 +120,6 @@ async function handleProGames(page) {
   }
 
   console.log('2. Clicking the first "Play with Pro" button...');
-  // Locating the first available "Play with Pro" button inside price sticky wrapper
   const playWithProButton = page
     .locator(".price-sticky-wrapper .price-box .svt-btn", {
       hasText: "Play with Pro",
@@ -93,10 +130,8 @@ async function handleProGames(page) {
 }
 
 async function handleGGirls(page) {
-  // Waiting for items container
   await page.waitForSelector(".items-container", { timeout: 10000 });
 
-  // Checking if ggirls cards are rendered
   const cards = page.locator(".items-container .pro-games-card");
   const cardsCount = await cards.count();
   console.log(`Found rendered ggirls profiles: ${cardsCount}`);
@@ -106,7 +141,6 @@ async function handleGGirls(page) {
   }
 
   console.log('2. Clicking the first "Play with GGirl" button...');
-  // Locating the first available "Play with GGirl" button inside price sticky wrapper
   const playWithGGirlButton = page
     .locator(".price-sticky-wrapper .price-box .svt-btn", {
       hasText: "Play with GGirl",
@@ -117,10 +151,8 @@ async function handleGGirls(page) {
 }
 
 async function handleCoaching(page) {
-  // Waiting for items container
   await page.waitForSelector(".items-container", { timeout: 10000 });
 
-  // Checking if coaching cards are rendered
   const cards = page.locator(".items-container .card");
   const cardsCount = await cards.count();
   console.log(`Found rendered coaching profiles: ${cardsCount}`);
@@ -132,7 +164,6 @@ async function handleCoaching(page) {
   }
 
   console.log('2. Clicking the first "Book now" button...');
-  // Locating the first available "Book now" button inside card details
   const bookNowButton = page
     .locator(".card-details .svt-btn", { hasText: "Book now" })
     .first();
@@ -157,7 +188,6 @@ async function handleCoaching(page) {
 }
 
 async function handleBoosting(page) {
-  // Waiting for the purchase button container
   await page.waitForSelector(".price-sticky-bottom-wrapper .purchase-btn", {
     timeout: 10000,
   });
@@ -177,13 +207,13 @@ async function handleBoosting(page) {
   const context = await browser.newContext({
     userAgent:
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    locale: "en-US", // Preferred locale for third-party gateways like Stripe
+    locale: "en-US",
   });
   const page = await context.newPage();
 
   try {
     console.log(
-      `${GREEN} ${BOLD}🚀 Launching test for context:${RESET} ${BOLD}${targetContext.toUpperCase()}${RESET}\n`,
+      `${GREEN}${BOLD}🚀 Launching test for context:${RESET} ${BOLD}${targetContext.toUpperCase()}${RESET}\n`,
     );
 
     if (targetContext === "boosting") {
@@ -194,7 +224,6 @@ async function handleBoosting(page) {
       await page.goto(finalUrl, { waitUntil: "networkidle" });
     }
 
-    // Step 2 execution based on context
     switch (targetContext) {
       case "accounts":
       case "items":
@@ -214,7 +243,7 @@ async function handleBoosting(page) {
         break;
       default:
         console.error(
-          `❌${RED} ${BOLD} Error: Invalid context "${targetContext}". Allowed contexts are: ${ALLOWED_CONTEXTS.join(", ")}${RESET}`,
+          `❌${RED}${BOLD} Error: Invalid context "${targetContext}". Allowed contexts are: ${ALLOWED_CONTEXTS.join(", ")}${RESET}`,
         );
         process.exit(1);
     }
@@ -263,21 +292,44 @@ async function handleBoosting(page) {
       await page.waitForURL(/.*checkout\.stripe\.com.*/, { timeout: 15000 });
     }
 
-    console.log(`\n${GREEN} ${BOLD}✔ Success!${RESET}`);
+    console.log(`\n${GREEN}${BOLD}✔ Success!${RESET}`);
 
     if (shouldBuy) {
       console.log(
-        `${GREEN} ${BOLD} Purchase process and Stripe integration are working properly.`,
+        `${GREEN}${BOLD} Purchase process and Stripe integration are working properly.${RESET}`,
       );
     }
+
+    // SUCCESS DEPLOYMENT FOR UPPTIME (Generates health-txt)
+    setStatusUp(targetContext);
 
     await browser.close();
     process.exit(0);
   } catch (error) {
     console.error(
-      `${RED} ${BOLD} ❌ Test aborted with error:${RESET}`,
+      `${RED}${BOLD}❌ Test aborted with error:${RESET}`,
       error.message,
     );
+
+    // FAILURE DEPLOYMENT FOR UPPTIME (Removes health.txt, generates error.json)
+    setStatusDown(targetContext, error.message);
+
+    // Capture and save failure screenshot directly inside status-data directory
+    try {
+      if (!fs.existsSync(DIR)) fs.mkdirSync(DIR, { recursive: true });
+      await page.screenshot({
+        path: path.join(DIR, `${targetContext}-screenshot.png`),
+        fullPage: true,
+      });
+      console.log(
+        `Saved failure screenshot to: ${DIR}/${targetContext}-screenshot.png`,
+      );
+    } catch (e) {
+      console.error(
+        `❌${RED}${BOLD} Failed to capture screenshot:${RESET}`,
+        e.message,
+      );
+    }
 
     if (process.env.GITHUB_ENV) {
       import("fs").then((fs) => {
@@ -286,17 +338,6 @@ async function handleBoosting(page) {
           `FAILED_FLOW=${targetContext.toUpperCase()}\n`,
         );
       });
-    }
-
-    // Capture screenshot on failure for GitHub Actions debugging
-    try {
-      await page.screenshot({ path: "failure-screenshot.png", fullPage: true });
-      console.log("Saved failure screenshot to: failure-screenshot.png");
-    } catch (e) {
-      console.error(
-        `❌${RED} ${BOLD} Failed to capture screenshot:${RESET}`,
-        e.message,
-      );
     }
 
     await browser.close();
