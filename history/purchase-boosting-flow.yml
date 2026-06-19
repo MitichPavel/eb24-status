@@ -1,7 +1,7 @@
-url: https://eloboost24.eu/boosting/swift-pass
-status: up
-code: 200
-responseTime: 570
-lastUpdated: 2026-06-19T00:23:48.209Z
+url: https://raw.githubusercontent.com/MitichPavel/eb24-status/master/status-data/boosting-health.txt
+status: down
+code: 404
+responseTime: 13
+lastUpdated: 2026-06-19T11:32:35.458Z
 startTime: 2026-06-18T21:09:32.009Z
 generator: Upptime <https://github.com/upptime/upptime>
