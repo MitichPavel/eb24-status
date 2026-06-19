@@ -43,6 +43,23 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Stage only the status-data directory
           git add status-data/
-          git commit -m "chore: update purchase flow status artifacts for ${{ matrix.flow }} [skip ci]" || echo "No changes to commit"
-          git push origin master
+
+          # Commit changes if there are any
+          if git commit -m "chore: update purchase flow status artifacts for ${{ matrix.flow }} [skip ci]"; then
+            # Retry loop to handle concurrent pushes from matrix jobs
+            for i in {1..5}; do
+              echo "Attempt $i to push changes..."
+              git pull --rebase origin master
+              if git push origin master; then
+                echo "Successfully pushed changes!"
+                break
+              fi
+              echo "Push rejected, retrying in 3 seconds..."
+              sleep 3
+            done
+          else
+            echo "No changes to commit"
+          fi
