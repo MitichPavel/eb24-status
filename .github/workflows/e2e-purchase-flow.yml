@@ -17,6 +17,7 @@ jobs:
     permissions:
       contents: write
       actions: write
+      issues: write
 
     strategy:
       fail-fast: false
