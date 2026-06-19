@@ -22,56 +22,26 @@ sites:
   - name: "Purchase: Boosting Flow"
     url: https://raw.githubusercontent.com/MitichPavel/eb24-status/master/status-data/boosting.html
     __dangerous__body_down: "purchase flow is down"
-    body: |
-
-      ---
-      🔍 **E2E Test Failure Artifacts:**
-      * [View HTML Report & Screenshot](https://raw.githubusercontent.com/MitichPavel/eb24-status/master/status-data/boosting.html)
 
   - name: "Purchase: Coaching Flow"
     url: https://raw.githubusercontent.com/MitichPavel/eb24-status/master/status-data/coaching.html
     __dangerous__body_down: "purchase flow is down"
-    body: |
-
-      ---
-      🔍 **E2E Test Failure Artifacts:**
-      * [View HTML Report & Screenshot](https://raw.githubusercontent.com/MitichPavel/eb24-status/master/status-data/coaching.html)
 
   - name: "Purchase: Accounts Flow"
     url: https://raw.githubusercontent.com/MitichPavel/eb24-status/master/status-data/accounts.html
     __dangerous__body_down: "purchase flow is down"
-    body: |
-
-      ---
-      🔍 **E2E Test Failure Artifacts:**
-      * [View HTML Report & Screenshot](https://raw.githubusercontent.com/MitichPavel/eb24-status/master/status-data/accounts.html)
 
   - name: "Purchase: Items Flow"
     url: https://raw.githubusercontent.com/MitichPavel/eb24-status/master/status-data/items.html
     __dangerous__body_down: "purchase flow is down"
-    body: |
-
-      ---
-      🔍 **E2E Test Failure Artifacts:**
-      * [View HTML Report & Screenshot](https://raw.githubusercontent.com/MitichPavel/eb24-status/master/status-data/items.html)
 
   - name: "Purchase: GGirls Flow"
     url: https://raw.githubusercontent.com/MitichPavel/eb24-status/master/status-data/ggirls.html
     __dangerous__body_down: "purchase flow is down"
-    body: |
-
-      ---
-      🔍 **E2E Test Failure Artifacts:**
-      * [View HTML Report & Screenshot](https://raw.githubusercontent.com/MitichPavel/eb24-status/master/status-data/ggirls.html)
 
   - name: "Purchase: Pro Games Flow"
     url: https://raw.githubusercontent.com/MitichPavel/eb24-status/master/status-data/progames.html
     __dangerous__body_down: "purchase flow is down"
-    body: |
-
-      ---
-      🔍 **E2E Test Failure Artifacts:**
-      * [View HTML Report & Screenshot](https://raw.githubusercontent.com/MitichPavel/eb24-status/master/status-data/progames.html)
 
 # notifications:
 #   - type: slack
