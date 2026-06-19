@@ -1,7 +1,7 @@
-url: https://eloboost24.eu/marketplace/accounts/league-of-legends
-status: up
-code: 200
-responseTime: 839
-lastUpdated: 2026-06-19T00:23:49.822Z
+url: https://raw.githubusercontent.com/MitichPavel/eb24-status/master/status-data/accounts-health.txt
+status: down
+code: 404
+responseTime: 15
+lastUpdated: 2026-06-19T11:33:03.080Z
 startTime: 2026-06-18T21:09:33.830Z
 generator: Upptime <https://github.com/upptime/upptime>
