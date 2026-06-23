@@ -48,18 +48,34 @@ const urlMap = {
 const finalUrl = urlMap[targetContext];
 
 const DIR = "./status-data";
+if (!fs.existsSync(DIR)) fs.mkdirSync(DIR, { recursive: true });
 
-// --- UPPTIME HTML REPORT MANAGEMENT ---
+// --- SAFE SYSTEM LOG LOGGER ---
+const logFilePath = path.join(DIR, `${targetContext}-execution.log`);
+if (fs.existsSync(logFilePath)) fs.unlinkSync(logFilePath);
+
+const logStream = fs.createWriteStream(logFilePath, { flags: "a" });
+
+const originalWriteOut = process.stdout.write;
+process.stdout.write = function (chunk, encoding, callback) {
+  logStream.write(chunk);
+  return originalWriteOut.apply(process.stdout, arguments);
+};
+
+const originalWriteErr = process.stderr.write;
+process.stderr.write = function (chunk, encoding, callback) {
+  logStream.write(chunk);
+  return originalWriteErr.apply(process.stderr, arguments);
+};
+// ------------------------------------------------
+
 function setStatusUp(contextName) {
-  if (!fs.existsSync(DIR)) fs.mkdirSync(DIR, { recursive: true });
-
-  // Create a clean HTML file indicating success (GitHub will return HTTP 200 OK)
   const htmlContent = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Status UP - Purhcase ${contextName}</title>
+  <title>Status UP - Purchase ${contextName}</title>
 </head>
 <body style="font-family: Arial, sans-serif; padding: 20px; background: #e6f4ea; color: #137333;">
   <h1>🟢 Purchase Flow Success</h1>
@@ -75,21 +91,30 @@ function setStatusUp(contextName) {
     `${GREEN}🟢 Status HTML (UP) saved for Upptime: ${contextName}${RESET}`,
   );
 
-  // Clean up old failure screenshot to prevent repository bloat
   const oldScreenshotPath = path.join(DIR, `${contextName}-screenshot.png`);
   if (fs.existsSync(oldScreenshotPath)) fs.unlinkSync(oldScreenshotPath);
+
+  // Close and clean temporary execution logs on success
+  logStream.end();
+  if (fs.existsSync(logFilePath)) fs.unlinkSync(logFilePath);
 }
 
 function setStatusDown(contextName, errorMessage, hasScreenshot = true) {
-  if (!fs.existsSync(DIR)) fs.mkdirSync(DIR, { recursive: true });
-
-  // Generate conditional screenshot HTML tag
   const screenshotTag = hasScreenshot
     ? `<h3>Failure Screenshot:</h3>
        <img src="./${contextName}-screenshot.png" alt="Failure Screenshot" style="max-width: 100%; border: 2px solid #c5221f; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />`
     : "";
 
-  // Create an HTML report containing the required trigger string and the optional image tag
+  let capturedLogs = "No console logs captured.";
+  if (fs.existsSync(logFilePath)) {
+    const rawLogs = fs.readFileSync(logFilePath, "utf8");
+    // Strip ANSI colors from the string to make the HTML logs readable
+    capturedLogs = rawLogs.replace(
+      /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g,
+      "",
+    );
+  }
+
   const htmlContent = `
 <!DOCTYPE html>
 <html lang="en">
@@ -102,20 +127,26 @@ function setStatusDown(contextName, errorMessage, hasScreenshot = true) {
   <p>Context: <strong>${contextName}</strong></p>
   <p>Status: <strong style="background: #c5221f; color: white; padding: 4px 8px; border-radius: 4px;">purchase flow is down</strong></p>
   <p>Timestamp: ${new Date().toISOString()}</p>
-  <hr style="border: 1px solid #fad2cf;" />
-  <h3>Error Message:</h3>
-  <pre style="background: #fff; padding: 15px; border: 1px solid #fad2cf; overflow-x: auto; font-family: monospace;">${errorMessage}</pre>
+  
+  <hr style="border: 1px solid #fad2cf; margin: 20px 0;" />
+  
+  <h3>🚨 Error Message:</h3>
+  <pre style="background: #fff; padding: 15px; border: 1px solid #fad2cf; overflow-x: auto; font-family: monospace; color: #b71c1c; font-weight: bold;">${errorMessage}</pre>
+  
+  <h3>📋 Full Console & System Logs:</h3>
+  <pre style="background: #212121; padding: 15px; border: 1px solid #424242; overflow-x: auto; font-family: monospace; color: #eeff41; line-height: 1.5; font-size: 13px; max-height: 600px;">${capturedLogs}</pre>
+  
   ${screenshotTag}
 </body>
 </html>
   `;
 
   fs.writeFileSync(path.join(DIR, `${contextName}.html`), htmlContent.trim());
-  console.log(
-    `${RED}🔴 Status HTML (DOWN) saved for Upptime: ${contextName}${RESET}`,
-  );
+
+  // Close the stream and delete temporary file since logs are safely embedded inside the HTML report
+  logStream.end();
+  if (fs.existsSync(logFilePath)) fs.unlinkSync(logFilePath);
 }
-// --------------------------------------
 
 async function handleItemsAndAccounts(page, targetContext) {
   const keyWord = targetContext === "accounts" ? "account" : "item";
@@ -201,8 +232,7 @@ async function handleCoaching(page) {
 
   console.log("Waiting for redirection to the coaching profile...");
   await page.waitForURL(/.*\/coaching\/.*/, { timeout: 15000 });
-  const coachingUrl = page.url();
-  console.log(`Successfully redirected to: ${coachingUrl}`);
+  console.log(`Successfully redirected to: ${page.url()}`);
 
   console.log(
     '3. Clicking the "Purchase Coaching" button on the coach profile...',
@@ -239,6 +269,18 @@ async function handleBoosting(page) {
     locale: "en-US",
   });
   const page = await context.newPage();
+
+  // Capture logging data from the browser context
+  page.on("console", (msg) => {
+    const type = msg.type().toUpperCase();
+    if (type === "ERROR" || type === "WARNING") {
+      console.log(`[Browserer ${type}] ${msg.text()}`);
+    }
+  });
+
+  page.on("pageerror", (exception) => {
+    console.error(`[Browserer CRITICAL] ${exception.message}`);
+  });
 
   try {
     console.log(
@@ -305,8 +347,7 @@ async function handleBoosting(page) {
       "6. Waiting for redirection to the Invoice page (ORDER_HASH)...",
     );
     await page.waitForURL(/.*\/invoice\/view\/.*/, { timeout: 15000 });
-    const invoiceUrl = page.url();
-    console.log(`   Successfully redirected to: ${invoiceUrl}`);
+    console.log(`   Successfully redirected to: ${page.url()}`);
 
     console.log('7. Clicking "Proceed to payment" button...');
     const proceedButton = page.locator(
@@ -328,40 +369,29 @@ async function handleBoosting(page) {
         `${GREEN}${BOLD} Purchase process and Stripe integration are working properly.${RESET}`,
       );
     }
-
-    // Generate Success HTML Report for Upptime (Triggers normal UP state)
     setStatusUp(targetContext);
-
     await browser.close();
     process.exit(0);
   } catch (error) {
     console.error(
-      `${RED}${BOLD}❌ Test aborted with error:${RESET}`,
-      error.message,
+      `❌${RED}${BOLD} Test aborted with error:${RESET} ${error.message}`,
     );
 
     let screenshotCaptured = false;
 
-    // Try to capture the screenshot and save it inside status-data directory
     try {
-      if (!fs.existsSync(DIR)) fs.mkdirSync(DIR, { recursive: true });
-
       await page.screenshot({
         path: path.join(DIR, `${targetContext}-screenshot.png`),
         fullPage: true,
       });
-
       console.log(
         `Saved failure screenshot to: ${DIR}/${targetContext}-screenshot.png`,
       );
       screenshotCaptured = true;
     } catch (e) {
       console.error(
-        `❌${RED}${BOLD} Failed to capture screenshot:${RESET}`,
-        e.message,
+        `❌${RED}${BOLD} Failed to capture screenshot:${RESET} ${e.message}`,
       );
-
-      // Ensure no leftover screenshot from previous runs remains if current capture fails
       const oldScreenshotPath = path.join(
         DIR,
         `${targetContext}-screenshot.png`,
@@ -369,16 +399,14 @@ async function handleBoosting(page) {
       if (fs.existsSync(oldScreenshotPath)) fs.unlinkSync(oldScreenshotPath);
     }
 
-    // Generate Failure HTML Report for Upptime with conditional image tag rendering
+    // Generate the HTML Report containing the error message, the conditional image tag and system logs
     setStatusDown(targetContext, error.message, screenshotCaptured);
 
     if (process.env.GITHUB_ENV) {
-      import("fs").then((fs) => {
-        fs.appendFileSync(
-          process.env.GITHUB_ENV,
-          `FAILED_FLOW=${targetContext.toUpperCase()}\n`,
-        );
-      });
+      fs.appendFileSync(
+        process.env.GITHUB_ENV,
+        `FAILED_FLOW=${targetContext.toUpperCase()}\n`,
+      );
     }
 
     await browser.close();
