@@ -1,14 +1,11 @@
 import { chromium } from "playwright-extra";
 import stealthPlugin from "puppeteer-extra-plugin-stealth";
-import fs from "fs";
 import path from "path";
 
 import { SELECTORS } from "./selectors.mjs";
 import {
-  initLogger,
   setStatusUp,
   setStatusDown,
-  DIR,
   RESET,
   GREEN,
   RED,
@@ -55,9 +52,6 @@ const urlMap = {
 };
 const finalUrl = urlMap[targetContext];
 
-// Initialize the system stream logger
-initLogger(targetContext);
-
 (async () => {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
@@ -65,12 +59,14 @@ initLogger(targetContext);
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
     locale: "en-US",
   });
-  // Start tracing before actions (it gathers screenshots, snapshots and network)
+
+  // START PLAYWRIGHT TRACING
   await context.tracing.start({
     screenshots: true,
     snapshots: true,
-    snapshots: true,
+    previews: true,
   });
+
   const page = await context.newPage();
 
   page.on("console", (msg) => {
@@ -184,35 +180,20 @@ initLogger(targetContext);
       `❌${RED}${BOLD} Test aborted with error:${RESET} ${error.message}`,
     );
 
-    let screenshotCaptured = false;
-    try {
-      await page.screenshot({
-        path: path.join(DIR, `${targetContext}-screenshot.png`),
-        fullPage: true,
-      });
-      screenshotCaptured = true;
-    } catch (e) {
-      console.error(`❌ Failed to capture screenshot:`, e.message);
-    }
+    setStatusDown(targetContext);
 
-    setStatusDown(targetContext, error.message, screenshotCaptured);
-
+    // Export the official Playwright Trace zip package only on failure
+    const tracePath = path.join(
+      process.cwd(),
+      `playwright-trace-${targetContext}.zip`,
+    );
     try {
-      // Stop tracing and export the full Playwright Trace Report zip
-      await context.tracing.stop({
-        path: path.join(DIR, `${targetContext}-playwright-trace.zip`),
-      });
-      console.log(
-        `Saved full Playwright trace report to: ${DIR}/${targetContext}-playwright-trace.zip`,
-      );
+      await context.tracing.stop({ path: tracePath });
+      console.log(`Saved Playwright Trace Report package to: ${tracePath}`);
     } catch (traceError) {
-      console.error(`❌ Failed to save Playwright trace:`, traceError.message);
-    }
-
-    if (process.env.GITHUB_ENV) {
-      fs.appendFileSync(
-        process.env.GITHUB_ENV,
-        `FAILED_FLOW=${targetContext.toUpperCase()}\n`,
+      console.error(
+        `❌ Failed to save Playwright trace file:`,
+        traceError.message,
       );
     }
 

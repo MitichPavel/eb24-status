@@ -98,6 +98,208 @@ export async function handleCoaching(page, selectors, commonSelectors) {
   await purchaseCoachingButton.waitFor({ state: "visible", timeout: 5000 });
   await purchaseCoachingButton.click();
 }
+import { chromium } from "playwright-extra";
+import stealthPlugin from "puppeteer-extra-plugin-stealth";
+import path from "path";
+import fs from "fs";
+
+import { SELECTORS } from "./selectors.mjs";
+import { RESET, GREEN, RED, BOLD } from "./logger.mjs";
+import * as handlers from "./handlers.mjs";
+
+const stealth = stealthPlugin();
+chromium.use(stealth);
+
+const guestEmail = process.argv[3];
+if (!guestEmail) {
+  console.error(
+    `❌${RED} ${BOLD} Error: No email address provided as the third argument!${RESET}`,
+  );
+  process.exit(1);
+}
+
+const ALLOWED_CONTEXTS = [
+  "boosting",
+  "coaching",
+  "accounts",
+  "items",
+  "ggirls",
+  "progames",
+];
+const targetContext = process.argv[2] || "accounts";
+const shouldBuy = process.argv[4] === "true";
+
+if (!ALLOWED_CONTEXTS.includes(targetContext)) {
+  console.error(
+    `❌${RED} ${BOLD} Error: Invalid context "${targetContext}".${RESET}`,
+  );
+  process.exit(1);
+}
+
+const urlMap = {
+  boosting: "https://eloboost24.eu/boosting/swift-pass",
+  coaching: "https://eloboost24.eu/coaching/league-of-legends",
+  accounts: "https://eloboost24.eu/marketplace/accounts/league-of-legends",
+  items: "https://eloboost24.eu/marketplace/items/league-of-legends",
+  ggirls: "https://eloboost24.eu/ggirls/league-of-legends",
+  progames: "https://eloboost24.eu/pro-games/arc-raiders",
+};
+const finalUrl = urlMap[targetContext];
+
+(async () => {
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({
+    userAgent:
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    locale: "en-US",
+  });
+
+  // START PLAYWRIGHT TRACING (Captures screenshots, DOM snapshots, and network)
+  await context.tracing.start({
+    screenshots: true,
+    snapshots: true,
+    previews: true,
+  });
+
+  const page = await context.newPage();
+
+  page.on("console", (msg) => {
+    if (
+      msg.type().toUpperCase() === "ERROR" ||
+      msg.type().toUpperCase() === "WARNING"
+    ) {
+      console.log(`[Browser ${msg.type().toUpperCase()}] ${msg.text()}`);
+    }
+  });
+
+  page.on("pageerror", (exception) => {
+    console.error(`[Browser CRITICAL] ${exception.message}`);
+  });
+
+  try {
+    console.log(
+      `${GREEN}${BOLD}🚀 Launching test for context:${RESET} ${BOLD}${targetContext.toUpperCase()}${RESET}\n`,
+    );
+
+    if (targetContext === "boosting") {
+      console.log("1. Opening boosting page and fetching price from API...");
+      await page.goto(finalUrl, { waitUntil: "domcontentloaded" });
+    } else {
+      console.log("1. Opening page and waiting for API to load...");
+      await page.goto(finalUrl, { waitUntil: "networkidle" });
+    }
+
+    switch (targetContext) {
+      case "accounts":
+      case "items":
+        await handlers.handleItemsAndAccounts(
+          page,
+          targetContext,
+          SELECTORS.itemsAndAccounts,
+          SELECTORS.common,
+        );
+        break;
+      case "progames":
+        await handlers.handleProGames(
+          page,
+          SELECTORS.progames,
+          SELECTORS.common,
+        );
+        break;
+      case "ggirls":
+        await handlers.handleGGirls(page, SELECTORS.ggirls, SELECTORS.common);
+        break;
+      case "coaching":
+        await handlers.handleCoaching(
+          page,
+          SELECTORS.coaching,
+          SELECTORS.common,
+        );
+        break;
+      case "boosting":
+        await handlers.handleBoosting(page, SELECTORS.boosting);
+        break;
+    }
+
+    console.log('3. Handling login popup: Clicking "Continue as a guest"...');
+    const guestButton = page.locator(SELECTORS.common.guestButton, {
+      hasText: "Continue as a guest",
+    });
+    await guestButton.waitFor({ state: "visible", timeout: 5000 });
+    await guestButton.click();
+
+    console.log("4. Typing guest email address...");
+    const emailInput = page.locator(SELECTORS.common.emailInput);
+    await emailInput.waitFor({ state: "visible", timeout: 5000 });
+    await emailInput.click();
+    await emailInput.pressSequentially(guestEmail, { delay: 50 });
+    await emailInput.evaluate((el) => {
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    console.log("5. Submitting step inside the popup...");
+    await page.waitForTimeout(500);
+    const continueButton = page.locator(SELECTORS.common.continueButton, {
+      hasText: "Continue",
+    });
+    await continueButton.click();
+
+    console.log(
+      "6. Waiting for redirection to the Invoice page (ORDER_HASH)...",
+    );
+    await page.waitForURL(/.*\/invoice\/view\/.*/, { timeout: 15000 });
+    console.log(`   Successfully redirected to: ${page.url()}`);
+
+    console.log('7. Clicking "Proceed to payment" button...');
+    const proceedButton = page.locator(SELECTORS.common.proceedButton, {
+      hasText: "Proceed to payment",
+    });
+    await proceedButton.waitFor({ state: "visible", timeout: 5000 });
+    await proceedButton.click();
+
+    if (shouldBuy) {
+      console.log("8. Waiting for redirection to Stripe checkout...");
+      await page.waitForURL(/.*checkout\.stripe\.com.*/, { timeout: 15000 });
+    }
+
+    console.log(`\n${GREEN}${BOLD}✔ Success!${RESET}`);
+
+    // Discard trace archive on success to save space
+    await context.tracing.stop();
+    await browser.close();
+    process.exit(0);
+  } catch (error) {
+    console.error(
+      `❌${RED}${BOLD} Test aborted with error:${RESET} ${error.message}`,
+    );
+
+    // Export the official Playwright Trace zip package only on failure
+    const tracePath = path.join(
+      process.cwd(),
+      `playwright-trace-${targetContext}.zip`,
+    );
+    try {
+      await context.tracing.stop({ path: tracePath });
+      console.log(`Saved Playwright Trace Report package to: ${tracePath}`);
+    } catch (traceError) {
+      console.error(
+        `❌ Failed to save Playwright trace file:`,
+        traceError.message,
+      );
+    }
+
+    if (process.env.GITHUB_ENV) {
+      fs.appendFileSync(
+        process.env.GITHUB_ENV,
+        `FAILED_FLOW=${targetContext.toUpperCase()}\n`,
+      );
+    }
+
+    await browser.close();
+    process.exit(1);
+  }
+})();
 
 export async function handleBoosting(page, selectors) {
   await page.waitForSelector(selectors.purchaseButton, { timeout: 10000 });

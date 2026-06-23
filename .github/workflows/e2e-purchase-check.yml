@@ -37,37 +37,50 @@ jobs:
           npx playwright install chromium --with-deps
 
       - name: Execute Playwright E2E Test
-        run: node check-purchase-flow.mjs ${{ matrix.flow }} test-ci@example.com false || true
+        run: node check-purchase-flow.mjs ${{ matrix.flow }} test-ci@example.com false
 
       - name: Upload Playwright Trace Report on Failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-trace-${{ matrix.context || 'report' }}
-          path: status-data/*-playwright-trace.zip
-          retention-days: 7
+          name: playwright-trace-${{ matrix.flow }}
+          path: playwright-trace-${{ matrix.flow }}.zip
+          retention-days: 14
+
+      - name: Add Report Link to Job Summary
+        if: failure()
+        run: |
+          echo "## 🔴 Purchase Flow Failure Detected! 🚨" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The E2E monitor test failed for module: **${{ matrix.flow }}**." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 How to download and inspect the full Playwright Trace Report?" >> $GITHUB_STEP_SUMMARY
+          echo "1. Go to the **Artifacts** section at the bottom of this execution page." >> $GITHUB_STEP_SUMMARY
+          echo "2. Download the **[playwright-trace-${{ matrix.flow }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)** archive." >> $GITHUB_STEP_SUMMARY
+          echo "3. Open your browser and navigate to: [trace.playwright.dev](https://trace.playwright.dev/)" >> $GITHUB_STEP_SUMMARY
+          echo "4. Drag and drop the downloaded \`.zip\` file directly onto the page." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The report contains full video recording, browser console logs, DOM snapshots, and the absolute network traffic history (API requests/responses)." >> $GITHUB_STEP_SUMMARY
 
       - name: Commit and Push Status Changes
+        if: always()
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Stage only the status-data directory
           git add status-data/
 
-          # Commit changes if there are any
-          if git commit -m "chore: update purchase flow status artifacts for ${{ matrix.flow }} [skip ci]"; then
-            # Retry loop to handle concurrent pushes from matrix jobs
+          if git commit -m "chore: update purchase flow status HTML for ${{ matrix.flow }} [skip ci]"; then
             for i in {1..5}; do
-              echo "Attempt $i to push changes..."
+              echo "Attempt $i to push status HTML changes..."
               git pull --rebase origin master
               if git push origin master; then
-                echo "Successfully pushed changes!"
+                echo "Successfully pushed status HTML!"
                 break
               fi
               echo "Push rejected, retrying in 3 seconds..."
               sleep 3
             done
           else
-            echo "No changes to commit"
+            echo "No status HTML changes to commit"
           fi
