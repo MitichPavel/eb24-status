@@ -191,7 +191,7 @@
     "slug": "purchase-accounts-flow",
     "status": "down",
     "uptime": "79.35%",
-    "uptimeDay": "98.00%",
+    "uptimeDay": "97.99%",
     "uptimeWeek": "79.35%",
     "uptimeMonth": "79.35%",
     "uptimeYear": "79.35%",
@@ -214,7 +214,7 @@
     "slug": "purchase-items-flow",
     "status": "down",
     "uptime": "93.28%",
-    "uptimeDay": "98.02%",
+    "uptimeDay": "98.00%",
     "uptimeWeek": "93.28%",
     "uptimeMonth": "93.28%",
     "uptimeYear": "93.28%",
@@ -235,7 +235,7 @@
     "slug": "purchase-g-girls-flow",
     "status": "down",
     "uptime": "93.29%",
-    "uptimeDay": "98.03%",
+    "uptimeDay": "98.02%",
     "uptimeWeek": "93.29%",
     "uptimeMonth": "93.29%",
     "uptimeYear": "93.29%",
@@ -246,7 +246,7 @@
     "timeYear": 188,
     "dailyMinutesDown": {
       "2026-06-19": 412,
-      "2026-06-23": 28
+      "2026-06-23": 29
     }
   },
   {
