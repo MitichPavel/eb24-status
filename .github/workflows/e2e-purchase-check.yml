@@ -39,6 +39,14 @@ jobs:
       - name: Execute Playwright E2E Test
         run: node check-purchase-flow.mjs ${{ matrix.flow }} test-ci@example.com false || true
 
+      - name: Upload Playwright Trace Report on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-trace-${{ matrix.context || 'report' }}
+          path: status-data/*-playwright-trace.zip
+          retention-days: 7
+
       - name: Commit and Push Status Changes
         run: |
           git config --global user.name "github-actions[bot]"

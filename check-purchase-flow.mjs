@@ -3,13 +3,21 @@ import stealthPlugin from "puppeteer-extra-plugin-stealth";
 import fs from "fs";
 import path from "path";
 
+import { SELECTORS } from "./selectors.mjs";
+import {
+  initLogger,
+  setStatusUp,
+  setStatusDown,
+  DIR,
+  RESET,
+  GREEN,
+  RED,
+  BOLD,
+} from "./logger.mjs";
+import * as handlers from "./handlers.mjs";
+
 const stealth = stealthPlugin();
 chromium.use(stealth);
-
-const RESET = "\x1b[0m";
-const GREEN = "\x1b[32m";
-const RED = "\x1b[31m";
-const BOLD = "\x1b[1m";
 
 const guestEmail = process.argv[3];
 if (!guestEmail) {
@@ -32,7 +40,7 @@ const shouldBuy = process.argv[4] === "true";
 
 if (!ALLOWED_CONTEXTS.includes(targetContext)) {
   console.error(
-    `❌${RED} ${BOLD} Error: Invalid context "${targetContext}". Allowed contexts are: ${ALLOWED_CONTEXTS.join(", ")}${RESET}`,
+    `❌${RED} ${BOLD} Error: Invalid context "${targetContext}".${RESET}`,
   );
   process.exit(1);
 }
@@ -47,219 +55,8 @@ const urlMap = {
 };
 const finalUrl = urlMap[targetContext];
 
-const DIR = "./status-data";
-if (!fs.existsSync(DIR)) fs.mkdirSync(DIR, { recursive: true });
-
-// --- SAFE SYSTEM LOG LOGGER ---
-const logFilePath = path.join(DIR, `${targetContext}-execution.log`);
-if (fs.existsSync(logFilePath)) fs.unlinkSync(logFilePath);
-
-const logStream = fs.createWriteStream(logFilePath, { flags: "a" });
-
-const originalWriteOut = process.stdout.write;
-process.stdout.write = function (chunk, encoding, callback) {
-  logStream.write(chunk);
-  return originalWriteOut.apply(process.stdout, arguments);
-};
-
-const originalWriteErr = process.stderr.write;
-process.stderr.write = function (chunk, encoding, callback) {
-  logStream.write(chunk);
-  return originalWriteErr.apply(process.stderr, arguments);
-};
-// ------------------------------------------------
-
-function setStatusUp(contextName) {
-  const htmlContent = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Status UP - Purchase ${contextName}</title>
-</head>
-<body style="font-family: Arial, sans-serif; padding: 20px; background: #e6f4ea; color: #137333;">
-  <h1>🟢 Purchase Flow Success</h1>
-  <p>Context: <strong>${contextName}</strong></p>
-  <p>Status: <strong>purchase flow is up</strong></p>
-  <p>Last checked: ${new Date().toISOString()}</p>
-</body>
-</html>
-  `;
-
-  fs.writeFileSync(path.join(DIR, `${contextName}.html`), htmlContent.trim());
-  console.log(
-    `${GREEN}🟢 Status HTML (UP) saved for Upptime: ${contextName}${RESET}`,
-  );
-
-  const oldScreenshotPath = path.join(DIR, `${contextName}-screenshot.png`);
-  if (fs.existsSync(oldScreenshotPath)) fs.unlinkSync(oldScreenshotPath);
-
-  // Close and clean temporary execution logs on success
-  logStream.end();
-  if (fs.existsSync(logFilePath)) fs.unlinkSync(logFilePath);
-}
-
-function setStatusDown(contextName, errorMessage, hasScreenshot = true) {
-  const screenshotTag = hasScreenshot
-    ? `<h3>Failure Screenshot:</h3>
-       <img src="./${contextName}-screenshot.png" alt="Failure Screenshot" style="max-width: 100%; border: 2px solid #c5221f; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />`
-    : "";
-
-  let capturedLogs = "No console logs captured.";
-  if (fs.existsSync(logFilePath)) {
-    const rawLogs = fs.readFileSync(logFilePath, "utf8");
-    // Strip ANSI colors from the string to make the HTML logs readable
-    capturedLogs = rawLogs.replace(
-      /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g,
-      "",
-    );
-  }
-
-  const htmlContent = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Status DOWN - Purchase ${contextName}</title>
-</head>
-<body style="font-family: Arial, sans-serif; padding: 20px; background: #fce8e6; color: #c5221f;">
-  <h1>🔴 Purchase Flow Failure Detected</h1>
-  <p>Context: <strong>${contextName}</strong></p>
-  <p>Status: <strong style="background: #c5221f; color: white; padding: 4px 8px; border-radius: 4px;">purchase flow is down</strong></p>
-  <p>Timestamp: ${new Date().toISOString()}</p>
-  
-  <hr style="border: 1px solid #fad2cf; margin: 20px 0;" />
-  
-  <h3>🚨 Error Message:</h3>
-  <pre style="background: #fff; padding: 15px; border: 1px solid #fad2cf; overflow-x: auto; font-family: monospace; color: #b71c1c; font-weight: bold;">${errorMessage}</pre>
-  
-  <h3>📋 Full Console & System Logs:</h3>
-  <pre style="background: #212121; padding: 15px; border: 1px solid #424242; overflow-x: auto; font-family: monospace; color: #eeff41; line-height: 1.5; font-size: 13px; max-height: 600px;">${capturedLogs}</pre>
-  
-  ${screenshotTag}
-</body>
-</html>
-  `;
-
-  fs.writeFileSync(path.join(DIR, `${contextName}.html`), htmlContent.trim());
-
-  // Close the stream and delete temporary file since logs are safely embedded inside the HTML report
-  logStream.end();
-  if (fs.existsSync(logFilePath)) fs.unlinkSync(logFilePath);
-}
-
-async function handleItemsAndAccounts(page, targetContext) {
-  const keyWord = targetContext === "accounts" ? "account" : "item";
-  await page.waitForSelector(".items-container", { timeout: 10000 });
-
-  const cards = page.locator(".items-container .card");
-  const cardsCount = await cards.count();
-  console.log(`Found rendered ${keyWord}(s): ${cardsCount}`);
-
-  if (cardsCount === 0) {
-    throw new Error(`The ${keyWord} list (cards) is empty after API load.`);
-  }
-
-  console.log('2. Clicking the first "Buy now" button...');
-  const buyNowButton = page
-    .locator(".card-details .svt-btn", { hasText: "Buy now" })
-    .first();
-  await buyNowButton.waitFor({ state: "visible", timeout: 5000 });
-  await buyNowButton.click();
-}
-
-async function handleProGames(page) {
-  await page.waitForSelector(".items-container", { timeout: 10000 });
-
-  const cards = page.locator(".items-container .pro-games-card");
-  const cardsCount = await cards.count();
-  console.log(`Found rendered pro games profiles: ${cardsCount}`);
-
-  if (cardsCount === 0) {
-    throw new Error("The profile list (cards) is empty after API load.");
-  }
-
-  console.log('2. Clicking the first "Play with Pro" button...');
-  const playWithProButton = page
-    .locator(".price-sticky-wrapper .price-box .svt-btn", {
-      hasText: "Play with Pro",
-    })
-    .first();
-  await playWithProButton.waitFor({ state: "visible", timeout: 5000 });
-  await playWithProButton.click();
-}
-
-async function handleGGirls(page) {
-  await page.waitForSelector(".items-container", { timeout: 10000 });
-
-  const cards = page.locator(".items-container .pro-games-card");
-  const cardsCount = await cards.count();
-  console.log(`Found rendered ggirls profiles: ${cardsCount}`);
-
-  if (cardsCount === 0) {
-    throw new Error("The ggirls profile list (cards) is empty after API load.");
-  }
-
-  console.log('2. Clicking the first "Play with GGirl" button...');
-  const playWithGGirlButton = page
-    .locator(".price-sticky-wrapper .price-box .svt-btn", {
-      hasText: "Play with GGirl",
-    })
-    .first();
-  await playWithGGirlButton.waitFor({ state: "visible", timeout: 5000 });
-  await playWithGGirlButton.click();
-}
-
-async function handleCoaching(page) {
-  await page.waitForSelector(".items-container", { timeout: 10000 });
-
-  const cards = page.locator(".items-container .card");
-  const cardsCount = await cards.count();
-  console.log(`Found rendered coaching profiles: ${cardsCount}`);
-
-  if (cardsCount === 0) {
-    throw new Error(
-      "The coaching profile list (cards) is empty after API load.",
-    );
-  }
-
-  console.log('2. Clicking the first "Book now" button...');
-  const bookNowButton = page
-    .locator(".card-details .svt-btn", { hasText: "Book now" })
-    .first();
-  await bookNowButton.waitFor({ state: "visible", timeout: 5000 });
-  await bookNowButton.click();
-
-  console.log("Waiting for redirection to the coaching profile...");
-  await page.waitForURL(/.*\/coaching\/.*/, { timeout: 15000 });
-  console.log(`Successfully redirected to: ${page.url()}`);
-
-  console.log(
-    '3. Clicking the "Purchase Coaching" button on the coach profile...',
-  );
-  const purchaseCoachingButton = page
-    .locator(".price-sticky-wrapper .price-box .svt-btn", {
-      hasText: "Purchase Coaching",
-    })
-    .first();
-  await purchaseCoachingButton.waitFor({ state: "visible", timeout: 5000 });
-  await purchaseCoachingButton.click();
-}
-
-async function handleBoosting(page) {
-  await page.waitForSelector(".price-sticky-bottom-wrapper .purchase-btn", {
-    timeout: 10000,
-  });
-
-  console.log('2. Clicking the "Purchase" button on the boosting page...');
-  const purchaseBoostingButton = page
-    .locator(".price-sticky-bottom-wrapper .purchase-btn", {
-      hasText: "Purchase",
-    })
-    .first();
-  await purchaseBoostingButton.waitFor({ state: "visible", timeout: 5000 });
-  await purchaseBoostingButton.click();
-}
+// Initialize the system stream logger
+initLogger(targetContext);
 
 (async () => {
   const browser = await chromium.launch({ headless: true });
@@ -268,18 +65,25 @@ async function handleBoosting(page) {
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
     locale: "en-US",
   });
+  // Start tracing before actions (it gathers screenshots, snapshots and network)
+  await context.tracing.start({
+    screenshots: true,
+    snapshots: true,
+    snapshots: true,
+  });
   const page = await context.newPage();
 
-  // Capture logging data from the browser context
   page.on("console", (msg) => {
-    const type = msg.type().toUpperCase();
-    if (type === "ERROR" || type === "WARNING") {
-      console.log(`[Browserer ${type}] ${msg.text()}`);
+    if (
+      msg.type().toUpperCase() === "ERROR" ||
+      msg.type().toUpperCase() === "WARNING"
+    ) {
+      console.log(`[Browser ${msg.type().toUpperCase()}] ${msg.text()}`);
     }
   });
 
   page.on("pageerror", (exception) => {
-    console.error(`[Browserer CRITICAL] ${exception.message}`);
+    console.error(`[Browser CRITICAL] ${exception.message}`);
   });
 
   try {
@@ -298,36 +102,44 @@ async function handleBoosting(page) {
     switch (targetContext) {
       case "accounts":
       case "items":
-        await handleItemsAndAccounts(page, targetContext);
+        await handlers.handleItemsAndAccounts(
+          page,
+          targetContext,
+          SELECTORS.itemsAndAccounts,
+          SELECTORS.common,
+        );
         break;
       case "progames":
-        await handleProGames(page);
+        await handlers.handleProGames(
+          page,
+          SELECTORS.progames,
+          SELECTORS.common,
+        );
         break;
       case "ggirls":
-        await handleGGirls(page);
+        await handlers.handleGGirls(page, SELECTORS.ggirls, SELECTORS.common);
         break;
       case "coaching":
-        await handleCoaching(page);
+        await handlers.handleCoaching(
+          page,
+          SELECTORS.coaching,
+          SELECTORS.common,
+        );
         break;
       case "boosting":
-        await handleBoosting(page);
+        await handlers.handleBoosting(page, SELECTORS.boosting);
         break;
-      default:
-        console.error(
-          `❌${RED}${BOLD} Error: Invalid context "${targetContext}". Allowed contexts are: ${ALLOWED_CONTEXTS.join(", ")}${RESET}`,
-        );
-        process.exit(1);
     }
 
     console.log('3. Handling login popup: Clicking "Continue as a guest"...');
-    const guestButton = page.locator(".guest-button-wrapper .svt-btn", {
+    const guestButton = page.locator(SELECTORS.common.guestButton, {
       hasText: "Continue as a guest",
     });
     await guestButton.waitFor({ state: "visible", timeout: 5000 });
     await guestButton.click();
 
     console.log("4. Typing guest email address...");
-    const emailInput = page.locator('input[placeholder="Email"]');
+    const emailInput = page.locator(SELECTORS.common.emailInput);
     await emailInput.waitFor({ state: "visible", timeout: 5000 });
     await emailInput.click();
     await emailInput.pressSequentially(guestEmail, { delay: 50 });
@@ -338,7 +150,7 @@ async function handleBoosting(page) {
 
     console.log("5. Submitting step inside the popup...");
     await page.waitForTimeout(500);
-    const continueButton = page.locator(".step-wrapper .svt-btn", {
+    const continueButton = page.locator(SELECTORS.common.continueButton, {
       hasText: "Continue",
     });
     await continueButton.click();
@@ -350,10 +162,9 @@ async function handleBoosting(page) {
     console.log(`   Successfully redirected to: ${page.url()}`);
 
     console.log('7. Clicking "Proceed to payment" button...');
-    const proceedButton = page.locator(
-      ".summary-box .button-wrapper .svt-btn",
-      { hasText: "Proceed to payment" },
-    );
+    const proceedButton = page.locator(SELECTORS.common.proceedButton, {
+      hasText: "Proceed to payment",
+    });
     await proceedButton.waitFor({ state: "visible", timeout: 5000 });
     await proceedButton.click();
 
@@ -364,12 +175,8 @@ async function handleBoosting(page) {
 
     console.log(`\n${GREEN}${BOLD}✔ Success!${RESET}`);
 
-    if (shouldBuy) {
-      console.log(
-        `${GREEN}${BOLD} Purchase process and Stripe integration are working properly.${RESET}`,
-      );
-    }
     setStatusUp(targetContext);
+    await context.tracing.stop();
     await browser.close();
     process.exit(0);
   } catch (error) {
@@ -378,29 +185,29 @@ async function handleBoosting(page) {
     );
 
     let screenshotCaptured = false;
-
     try {
       await page.screenshot({
         path: path.join(DIR, `${targetContext}-screenshot.png`),
         fullPage: true,
       });
-      console.log(
-        `Saved failure screenshot to: ${DIR}/${targetContext}-screenshot.png`,
-      );
       screenshotCaptured = true;
     } catch (e) {
-      console.error(
-        `❌${RED}${BOLD} Failed to capture screenshot:${RESET} ${e.message}`,
-      );
-      const oldScreenshotPath = path.join(
-        DIR,
-        `${targetContext}-screenshot.png`,
-      );
-      if (fs.existsSync(oldScreenshotPath)) fs.unlinkSync(oldScreenshotPath);
+      console.error(`❌ Failed to capture screenshot:`, e.message);
     }
 
-    // Generate the HTML Report containing the error message, the conditional image tag and system logs
     setStatusDown(targetContext, error.message, screenshotCaptured);
+
+    try {
+      // Stop tracing and export the full Playwright Trace Report zip
+      await context.tracing.stop({
+        path: path.join(DIR, `${targetContext}-playwright-trace.zip`),
+      });
+      console.log(
+        `Saved full Playwright trace report to: ${DIR}/${targetContext}-playwright-trace.zip`,
+      );
+    } catch (traceError) {
+      console.error(`❌ Failed to save Playwright trace:`, traceError.message);
+    }
 
     if (process.env.GITHUB_ENV) {
       fs.appendFileSync(
