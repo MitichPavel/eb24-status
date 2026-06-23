@@ -11,7 +11,7 @@ export const SELECTORS = {
     buyNowButton: ".card-details .svt-btn",
   },
   progames: {
-    card: ".items-container .pro-games-card",
+    card: ".items-container .pro-games-card-test-error",
     playWithProButton: ".price-sticky-wrapper .price-box .svt-btn",
   },
   ggirls: {
