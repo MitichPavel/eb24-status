@@ -7,7 +7,7 @@ export const SELECTORS = {
     proceedButton: ".summary-box .button-wrapper .svt-btn",
   },
   itemsAndAccounts: {
-    card: ".items-container .card-test-error",
+    card: ".items-container .card",
     buyNowButton: ".card-details .svt-btn",
   },
   progames: {
@@ -16,7 +16,7 @@ export const SELECTORS = {
   },
   ggirls: {
     card: ".items-container .pro-games-card",
-    playWithGGirlButton: ".price-sticky-wrapper .price-box .svt-btn-test-error",
+    playWithGGirlButton: ".price-sticky-wrapper .price-box .svt-btn",
   },
   coaching: {
     card: ".items-container .card",
