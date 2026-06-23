@@ -16,7 +16,7 @@ export const SELECTORS = {
   },
   ggirls: {
     card: ".items-container .pro-games-card",
-    playWithGGirlButton: ".price-sticky-wrapper .price-box .svt-btn",
+    playWithGGirlButton: ".price-sticky-wrapper .price-box .svt-btn-test-error",
   },
   coaching: {
     card: ".items-container .card",

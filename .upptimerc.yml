@@ -43,16 +43,18 @@ sites:
     url: https://raw.githubusercontent.com/MitichPavel/eb24-status/master/status-data/progames.html
     __dangerous__body_down: "purchase flow is down"
 
-# notifications:
+notifications:
+  - type: telegram
+    bot-token: $TELEGRAM_BOT_TOKEN
 #   - type: slack
 #     webhook-url: "$SLACK_CRITICAL_WEBHOOK"
 
-# message-template: |
-#   🚨 *Alert:* $SITE_NAME is $STATUS
+message-template: |
+  🚨 *Alert:* $SITE_NAME is $STATUS
 
-#   *Health Check URL:* $SITE_URL
-#   *HTML Report & Screenshot:* $SITE_URL/../$SITE_NAME.html
-#   *Time:* $TIMESTAMP
+  *Health Check URL:* $SITE_URL
+  *HTML Report & Screenshot:* $SITE_URL/../$SITE_NAME.html
+  *Time:* $TIMESTAMP
 
 status-website:
   # Add your custom domain name, or remove the `cname` line if you don't have a domain
