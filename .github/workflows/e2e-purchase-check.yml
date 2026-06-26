@@ -44,7 +44,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-trace-${{ matrix.flow }}
-          path: playwright-trace-${{ matrix.flow }}.zip
+          path: status-data/playwright-trace-${{ matrix.flow }}.zip
           retention-days: 14
 
       - name: Add Report Link to Job Summary
@@ -70,17 +70,17 @@ jobs:
 
           git add status-data/
 
-          if git commit -m "chore: update purchase flow status HTML for ${{ matrix.flow }} [skip ci]"; then
+          if git commit -m "chore: update purchase flow status artifacts for ${{ matrix.flow }} [skip ci]"; then
             for i in {1..5}; do
-              echo "Attempt $i to push status HTML changes..."
+              echo "Attempt $i to push status changes..."
               git pull --rebase origin master
               if git push origin master; then
-                echo "Successfully pushed status HTML!"
+                echo "Successfully pushed status data!"
                 break
               fi
               echo "Push rejected, retrying in 3 seconds..."
               sleep 3
             done
           else
-            echo "No status HTML changes to commit"
+            echo "No changes to commit"
           fi

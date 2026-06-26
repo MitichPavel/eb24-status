@@ -182,9 +182,10 @@ const finalUrl = urlMap[targetContext];
 
     setStatusDown(targetContext);
 
-    // Export the official Playwright Trace zip package only on failure
+    // Save the official Playwright Trace zip package inside the status-data directory
     const tracePath = path.join(
       process.cwd(),
+      "status-data",
       `playwright-trace-${targetContext}.zip`,
     );
     try {
